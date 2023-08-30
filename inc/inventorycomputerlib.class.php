@@ -3402,7 +3402,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                ]
             );
 
-            $insert_id = $DB->insert_id();
+            $insert_id = $DB->insertId();
 
             $DB->insert(
                'glpi_networkportethernets',
@@ -3421,7 +3421,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             $DB->insert(
                'glpi_ipaddresses',
                [
-                  'items_id' => $DB->insert_id(),
+                  'items_id' => $DB->insertId(),
                   'itemtype' => 'NetworkName',
                   'name' => $singleip,
                   'mainitems_id' => $computers_id,
@@ -3804,7 +3804,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   'date_creation' => date('Y-m-d H:i:s')
                ]
             );
-            $OSidname = $DB->insert_id();
+            $OSidname = $DB->insertId();
          } else {
             if ($rowname = $reqname->current()) {
                $OSidname = $rowname['id'];
@@ -3830,7 +3830,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   'date_creation' => date('Y-m-d H:i:s')
                ]
             );
-            $OSidversion = $DB->insert_id();
+            $OSidversion = $DB->insertId();
          } else {
             if ($rowversion = $reqversion->current()) {
                $OSidversion = $rowversion['id'];
@@ -3856,7 +3856,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   'date_creation' => date('Y-m-d H:i:s')
                ]
             );
-            $OSidarch = $DB->insert_id();
+            $OSidarch = $DB->insertId();
          } else {
             if ($rowarch = $reqarch->current()) {
                $OSidarch = $rowarch['id'];
