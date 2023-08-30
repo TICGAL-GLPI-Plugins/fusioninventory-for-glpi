@@ -1058,6 +1058,36 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                      $input['virtualmachinestates_id'] =
                          $a_computerinventory['virtualmachine'][$key]['virtualmachinestates_id'];
                   }
+                  //CHANGE
+                  if (isset($a_computerinventory['virtualmachine'][$key]['admin'])) {
+                     $input['admin'] =
+                        $a_computerinventory['virtualmachine'][$key]['admin'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['owner'])) {
+                     $input['owner'] =
+                        $a_computerinventory['virtualmachine'][$key]['owner'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['local_disk'])) {
+                     $input['local_disk'] =
+                        $a_computerinventory['virtualmachine'][$key]['local_disk'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['shared_disk'])) {
+                     $input['shared_disk'] =
+                        $a_computerinventory['virtualmachine'][$key]['shared_disk'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['ip_addresses'])) {
+                     $input['ip_addresses'] =
+                        $a_computerinventory['virtualmachine'][$key]['ip_addresses'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['host_name'])) {
+                     $input['host_name'] =
+                        $a_computerinventory['virtualmachine'][$key]['host_name'];
+                  }
+                  if (isset($a_computerinventory['virtualmachine'][$key]['operative_system'])) {
+                     $input['operative_system'] =
+                     $a_computerinventory['virtualmachine'][$key]['operative_system'];
+                  }
+                  //END CHANGE
                   $computerVirtualmachine->update($input, !$no_history);
                   unset($simplecomputervirtualmachine[$key]);
                   unset($a_computerinventory['virtualmachine'][$key]);
@@ -1099,6 +1129,9 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   $iterator = $DB->request([
                      'FROM'   => 'glpi_computers',
                      'WHERE'  => [
+                        //CHANGE
+                        'name' => $a_vm['name'],
+                        //END CHANGE
                         'RAW' => [
                            'LOWER(uuid)'  => ComputerVirtualMachine::getUUIDRestrictCriteria($a_vm['uuid'])
                         ]
@@ -1109,12 +1142,23 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                   foreach ($iterator as $data) {
                      $computers_vm_id = $data['id'];
                   }
+                  //CHANGE
+                  unset($a_vm['admin']);
+                  unset($a_vm['owner']);
+                  //END CHANGE
                   if ($computers_vm_id == 0) {
                      // Add computer
                      $a_vm['entities_id'] = $computer->fields['entities_id'];
                      $computers_vm_id = $computervm->add($a_vm, [], !$no_history);
                      // Manage networks
                      $this->manageNetworkPort($a_vm['networkport'], $computers_vm_id, false);
+                     //CHANGE
+                     $this->manageVMipaddresses($a_vm['ipaddresses'], $computers_vm_id, false);
+                     $this->manageVCPU($a_vm['vcpu'], $computers_vm_id);
+                     $this->manageRAM($a_vm['ram'], $computers_vm_id);
+                     $this->manageDisk($a_vm['local_disk'], $a_vm['shared_disk'], $computers_vm_id);
+                     $this->manageOS($a_vm['operative_system'], $computers_vm_id);
+                     //END CHANGE
                   } else {
                      if ($pfAgent->getAgentWithComputerid($computers_vm_id) === false) {
                         // Update computer
@@ -1122,6 +1166,13 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
                         $computervm->update($a_vm, !$no_history);
                         // Manage networks
                         $this->manageNetworkPort($a_vm['networkport'], $computers_vm_id, false);
+                        //CHANGE
+                        $this->manageVMipaddresses($a_vm['ipaddresses'], $computers_vm_id, false);
+                        $this->manageVCPU($a_vm['vcpu'], $computers_vm_id);
+                        $this->manageRAM($a_vm['ram'], $computers_vm_id);
+                        $this->manageDisk($a_vm['local_disk'], $a_vm['shared_disk'], $computers_vm_id);
+                        $this->manageOS($a_vm['operative_system'], $computers_vm_id);
+                        //END CHANGE
                      }
                   }
                }
@@ -3311,4 +3362,521 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       }
       $computer_Item->add($input, [], !$no_history);
    }
+   //CHANGE
+   function manageVMipaddresses($inventory_ipaddresses, $computers_id, $no_history)
+   {
+      global $DB;
+
+      //Recojo todas las IP que tiene esa máquina virtual
+      $query = [
+         'SELECT' => 'name',
+         'FROM' => 'glpi_ipaddresses',
+         'WHERE' => [
+            'mainitems_id' => $computers_id,
+            'mainitemtype' => 'Computer'
+         ]
+      ];
+
+      $ipindb = [];
+      foreach ($DB->request($query) as $i => $row) {
+         array_push($ipindb, $row['name']);
+      }
+
+      //Compruebo las IP que están en el array y no están en la BD para insertar
+      foreach ($inventory_ipaddresses as $singleip) {
+         $version = 0;
+         $v = strpos($singleip, ':');
+         if ($v === false) {
+            $version = 4;
+         } else {
+            $version = 6;
+         }
+         //Si no está, la inserta
+         if (!in_array($singleip, $ipindb)) {
+            $DB->insert(
+               'glpi_networkports',
+               [
+                  'items_id' => $computers_id,
+                  'itemtype' => 'Computer',
+                  'instantiation_type' => 'NetworkPortEthernet'
+               ]
+            );
+
+            $insert_id = $DB->insert_id();
+
+            $DB->insert(
+               'glpi_networkportethernets',
+               [
+                  'networkports_id' => $insert_id,
+                  'speed' => 0
+               ]
+            );
+            $DB->insert(
+               'glpi_networknames',
+               [
+                  'items_id' => $insert_id,
+                  'itemtype' => 'NetworkPort'
+               ]
+            );
+            $DB->insert(
+               'glpi_ipaddresses',
+               [
+                  'items_id' => $DB->insert_id(),
+                  'itemtype' => 'NetworkName',
+                  'name' => $singleip,
+                  'mainitems_id' => $computers_id,
+                  'mainitemtype' => 'Computer',
+                  'version' => $version
+               ]
+            );
+         }
+      }
+
+      //Compruebo si alguna IP ya no la tiene la máquina virtual en VMware, si no está, la elimino
+      foreach ($ipindb as $ip) {
+         if (!in_array($ip, $inventory_ipaddresses)) {
+            $query = "DELETE glpi_ipaddresses, glpi_networknames, glpi_networkportethernets, glpi_networkports
+                     FROM glpi_ipaddresses 
+                     LEFT JOIN glpi_networknames ON (glpi_ipaddresses.items_id=glpi_networknames.id) 
+                     LEFT JOIN glpi_networkportethernets ON (glpi_networkportethernets.networkports_id=glpi_networknames.items_id)
+                     LEFT JOIN glpi_networkports ON (glpi_networkports.id=glpi_networkportethernets.networkports_id)
+                     WHERE glpi_ipaddresses.mainitems_id=$computers_id AND glpi_ipaddresses.mainitemtype='Computer' AND glpi_ipaddresses.name='$ip'";
+            $DB->request($query);
+         }
+      }
+   }
+
+   function manageVCPU($numVCPU, $computers_id)
+   {
+      global $DB;
+
+      //Compruebo si la máquina ya tiene asignado el procesador
+      $req = $DB->request([
+         'FROM' => 'glpi_items_deviceprocessors',
+         'WHERE' => [
+            'items_id' => $computers_id,
+            'itemtype' => 'Computer',
+         ]
+      ]);
+
+      if (count($req) == 0) {
+         //Consulto el id del procesador genérico
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_deviceprocessors',
+            'WHERE' => [
+               'designation' => 'Generic Processor'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtypevcpu = $rowid['id'];
+         }
+
+         $DB->insert(
+            'glpi_items_deviceprocessors',
+            [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'deviceprocessors_id' => $idtypevcpu,
+               'nbcores' => $numVCPU
+            ]
+         );
+      } else {
+         if ($row = $req->current()) {
+            if ($row['nbcores'] != $numVCPU) {
+               $DB->update(
+                  'glpi_items_deviceprocessors',
+                  [
+                     'nbcores' => $numVCPU
+                  ],
+                  [
+                     'items_id' => $computers_id,
+                     'itemtype' => 'Computer',
+                  ]
+               );
+            }
+         }
+      }
+   }
+
+   function manageRAM($sizeRAM, $computers_id)
+   {
+      global $DB;
+
+      $sizeRAM = ($sizeRAM / 1024) * 1000;
+
+      //Compruebo si la máquina ya tiene asignado la memoria
+      $req = $DB->request([
+         'FROM' => 'glpi_items_devicememories',
+         'WHERE' => [
+            'items_id' => $computers_id,
+            'itemtype' => 'Computer'
+         ]
+      ]);
+
+      if (count($req) == 0) {
+         //Consulto el id de la memoria genérica
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_devicememories',
+            'WHERE' => [
+               'designation' => 'Generic Memory'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtyperam = $rowid['id'];
+         }
+
+         $DB->insert(
+            'glpi_items_devicememories',
+            [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'devicememories_id' => $idtyperam,
+               'size' => $sizeRAM
+            ]
+         );
+      } else {
+         if ($row = $req->current()) {
+            if ($row['size'] != $sizeRAM) {
+               $DB->update(
+                  'glpi_items_devicememories',
+                  [
+                     'size' => $sizeRAM
+                  ],
+                  [
+                     'items_id' => $computers_id,
+                     'itemtype' => 'Computer',
+                  ]
+               );
+            }
+         }
+      }
+   }
+
+   function manageDisk($local_disk, $shared_disk, $computers_id)
+   {
+      global $DB;
+
+      $local_disk = $local_disk * 1000;
+      $shared_disk = $shared_disk * 1000;
+
+      if ($local_disk > 0) {
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_deviceharddrives',
+            'WHERE' => [
+               'designation' => 'Generic Local Drive'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtypedisk = $rowid['id'];
+         }
+
+         $req = $DB->request([
+            'FROM' => 'glpi_items_deviceharddrives',
+            'WHERE' => [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'deviceharddrives_id' => $idtypedisk
+            ]
+         ]);
+
+         if (count($req) == 0) {
+            $DB->insert(
+               'glpi_items_deviceharddrives',
+               [
+                  'items_id' => $computers_id,
+                  'itemtype' => 'Computer',
+                  'deviceharddrives_id' => $idtypedisk,
+                  'capacity' => $local_disk
+               ]
+            );
+         } else {
+            if ($row = $req->current()) {
+               if ($row['capacity'] != $local_disk) {
+                  $DB->update(
+                     'glpi_items_deviceharddrives',
+                     [
+                        'capacity' => $local_disk
+                     ],
+                     [
+                        'items_id' => $computers_id,
+                        'itemtype' => 'Computer',
+                        'deviceharddrives_id' => $idtypedisk,
+                     ]
+                  );
+               }
+            }
+         }
+      }
+      if ($shared_disk > 0) {
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_deviceharddrives',
+            'WHERE' => [
+               'designation' => 'Generic Shared Drive'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtypedisk = $rowid['id'];
+         }
+
+         $req = $DB->request([
+            'FROM' => 'glpi_items_deviceharddrives',
+            'WHERE' => [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'deviceharddrives_id' => $idtypedisk
+            ]
+         ]);
+
+         if (count($req) == 0) {
+            $DB->insert(
+               'glpi_items_deviceharddrives',
+               [
+                  'items_id' => $computers_id,
+                  'itemtype' => 'Computer',
+                  'deviceharddrives_id' => $idtypedisk,
+                  'capacity' => $shared_disk
+               ]
+            );
+         } else {
+            if ($row = $req->current()) {
+               if ($row['capacity'] != $shared_disk) {
+                  $DB->update(
+                     'glpi_items_deviceharddrives',
+                     [
+                        'capacity' => $shared_disk
+                     ],
+                     [
+                        'items_id' => $computers_id,
+                        'itemtype' => 'Computer',
+                        'deviceharddrives_id' => $idtypedisk,
+                     ]
+                  );
+               }
+            }
+         }
+      }
+
+      //Borrado de discos
+      if ($local_disk == 0) {
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_deviceharddrives',
+            'WHERE' => [
+               'designation' => 'Generic Local Drive'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtypedisk = $rowid['id'];
+         }
+
+         $capacity = 0;
+         $query = [
+            'SELECT' => 'capacity',
+            'FROM' => 'glpi_items_deviceharddrives',
+            'WHERE' => [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'deviceharddrives_id' => $idtypedisk
+            ]
+         ];
+         $req = $DB->request($query);
+         if ($row = $req->current()) {
+            $capacity = $row['capacity'];
+         }
+
+         if ($capacity != $local_disk) {
+            $DB->delete(
+               'glpi_items_deviceharddrives',
+               [
+                  'items_id' => $computers_id,
+                  'itemtype' => 'Computer',
+                  'deviceharddrives_id' => $idtypedisk
+               ]
+            );
+         }
+      }
+      if ($shared_disk == 0) {
+         $queryid = [
+            'SELECT' => 'id',
+            'FROM' => 'glpi_deviceharddrives',
+            'WHERE' => [
+               'designation' => 'Generic Shared Drive'
+            ]
+         ];
+         $reqid = $DB->request($queryid);
+         if ($rowid = $reqid->current()) {
+            $idtypedisk = $rowid['id'];
+         }
+
+         $capacity = 0;
+         $query = [
+            'SELECT' => 'capacity',
+            'FROM' => 'glpi_items_deviceharddrives',
+            'WHERE' => [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'deviceharddrives_id' => $idtypedisk
+            ]
+         ];
+         $req = $DB->request($query);
+         if ($row = $req->current()) {
+            $capacity = $row['capacity'];
+         }
+
+         if ($capacity != $shared_disk) {
+            $DB->delete(
+               'glpi_items_deviceharddrives',
+               [
+                  'items_id' => $computers_id,
+                  'itemtype' => 'Computer',
+                  'deviceharddrives_id' => $idtypedisk
+               ]
+            );
+         }
+      }
+   }
+
+   function manageOS($operating_system, $computers_id)
+   {
+      global $DB;
+
+      //Se separan nombre, versión y arquitectura
+      $OSname = '';
+      $OSversion = '';
+      $OSarch = '';
+      $verflag = false;
+      $archflag = false;
+      for ($i = 0; $i < strlen($operating_system); $i++) {
+         if ($operating_system[$i] == '(') {
+            break;
+         }
+         if (is_numeric($operating_system[$i])) {
+            $verflag = true;
+         }
+         if (!$verflag && !$archflag) {
+            $OSname .= $operating_system[$i];
+         }
+         if ($verflag && !$archflag) {
+            $OSversion .= $operating_system[$i];
+         }
+      }
+
+      for ($i = 0; $i < strlen($operating_system); $i++) {
+         if ($operating_system[$i] == '(') {
+            $archflag = true;
+         }
+         if ($operating_system[$i] == ')') {
+            $archflag = false;
+         }
+         if ($archflag && $operating_system[$i] != '(') {
+            $OSarch .= $operating_system[$i];
+         }
+      }
+      $OSname = trim($OSname);
+      $OSversion = trim($OSversion);
+      $OSarch = trim($OSarch);
+
+      //Comprobaciones de si ya existen el nombre de SO, la versión y la arquitectura, si no existen, se insertan
+      if ($OSname != '') {
+         $queryname = [
+            'FROM' => 'glpi_operatingsystems',
+            'WHERE' => [
+               'name' => $OSname
+            ]
+         ];
+         $reqname = $DB->request($queryname);
+         if (!count($reqname)) {
+            $DB->insert(
+               'glpi_operatingsystems',
+               [
+                  'name' => $OSname,
+                  'comment' => '',
+                  'date_mod' => date('Y-m-d H:i:s'),
+                  'date_creation' => date('Y-m-d H:i:s')
+               ]
+            );
+            $OSidname = $DB->insert_id();
+         } else {
+            if ($rowname = $reqname->current()) {
+               $OSidname = $rowname['id'];
+            }
+         }
+      }
+
+      if ($OSversion != '') {
+         $queryversion = [
+            'FROM' => 'glpi_operatingsystemversions',
+            'WHERE' => [
+               'name' => $OSversion
+            ]
+         ];
+         $reqversion = $DB->request($queryversion);
+         if (!count($reqversion)) {
+            $DB->insert(
+               'glpi_operatingsystemversions',
+               [
+                  'name' => $OSversion,
+                  'comment' => '',
+                  'date_mod' => date('Y-m-d H:i:s'),
+                  'date_creation' => date('Y-m-d H:i:s')
+               ]
+            );
+            $OSidversion = $DB->insert_id();
+         } else {
+            if ($rowversion = $reqversion->current()) {
+               $OSidversion = $rowversion['id'];
+            }
+         }
+      }
+
+      if ($OSarch != '') {
+         $queryarch = [
+            'FROM' => 'glpi_operatingsystemarchitectures',
+            'WHERE' => [
+               'name' => $OSarch
+            ]
+         ];
+         $reqarch = $DB->request($queryarch);
+         if (!count($reqarch)) {
+            $DB->insert(
+               'glpi_operatingsystemarchitectures',
+               [
+                  'name' => $OSarch,
+                  'comment' => '',
+                  'date_mod' => date('Y-m-d H:i:s'),
+                  'date_creation' => date('Y-m-d H:i:s')
+               ]
+            );
+            $OSidarch = $DB->insert_id();
+         } else {
+            if ($rowarch = $reqarch->current()) {
+               $OSidarch = $rowarch['id'];
+            }
+         }
+      }
+
+      //Se guardan los datos del SO asociados ya a la máquina
+      $DB->insert(
+         'glpi_items_operatingsystems',
+         [
+            'items_id' => $computers_id,
+            'itemtype' => 'Computer',
+            'operatingsystems_id' => $OSidname,
+            'operatingsystemversions_id' => $OSidversion,
+            'operatingsystemarchitectures_id' => $OSidarch,
+            'date_mod' => date('Y-m-d H:i:s'),
+            'date_creation' => date('Y-m-d H:i:s')
+         ]
+      );
+   }
+   //END CHANGE
 }

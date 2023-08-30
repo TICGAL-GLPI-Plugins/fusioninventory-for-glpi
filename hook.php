@@ -819,6 +819,10 @@ function cron_plugin_fusioninventory() {
  * @return boolean
  */
 function plugin_fusioninventory_install() {
+   //CHANGE
+   global $DB;
+   //END CHANGE
+
    ini_set("max_execution_time", "0");
 
    if (basename(filter_input(INPUT_SERVER, "SCRIPT_NAME")) != "cli_install.php") {
@@ -849,6 +853,25 @@ function plugin_fusioninventory_install() {
       require_once (PLUGIN_FUSIONINVENTORY_DIR . "/install/install.php");
       pluginFusioninventoryInstall(PLUGIN_FUSIONINVENTORY_VERSION, $migrationname);
    }
+   //CHANGE
+   //Agregar columnas a la tabla de la base de datos de las máquinas virtuales, necesarios para guardar los datos
+   $columns = [
+      ['admin', 'varchar(255)'],
+      ['owner', 'varchar(255)'],
+      ['ip_addresses', 'text'],
+      ['operative_system', 'varchar(255)'],
+      ['host_name', 'varchar(255)'],
+      ['local_disk', 'float(10,2)'],
+      ['shared_disk', 'float(10,2)']
+   ];
+   foreach ($columns as $single) {
+      $columnname = $single[0];
+      $columntype = $single[1];
+
+      $queryadd = "ALTER TABLE glpi_computervirtualmachines ADD column " . $columnname . " " . $columntype;
+      $DB->query($queryadd) or die($DB->error());
+   }
+   //END CHANGE
    return true;
 }
 
