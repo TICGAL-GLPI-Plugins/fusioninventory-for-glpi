@@ -924,7 +924,7 @@ class PluginFusioninventoryTask extends PluginFusioninventoryTaskView {
     * @return string
     */
    static function formatChrono($chrono) {
-      $interval = abs($chrono['end'] - $chrono['start']);
+      $interval = (int) abs($chrono['end'] - $chrono['start']);
       $micro    = intval($interval * 100);
       $seconds  = intval($interval % 60);
       $minutes  = intval($interval / 60);
