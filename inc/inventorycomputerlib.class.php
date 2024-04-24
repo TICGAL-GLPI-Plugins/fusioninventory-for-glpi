@@ -3469,6 +3469,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             ]
          ];
          $reqid = $DB->request($queryid);
+         $idtypevcpu = 0;
          if ($rowid = $reqid->current()) {
             $idtypevcpu = $rowid['id'];
          }
@@ -3525,6 +3526,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             ]
          ];
          $reqid = $DB->request($queryid);
+         $idtyperam = 0;
          if ($rowid = $reqid->current()) {
             $idtyperam = $rowid['id'];
          }
@@ -3572,6 +3574,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
             ]
          ];
          $reqid = $DB->request($queryid);
+         $idtypedisk = 0;
          if ($rowid = $reqid->current()) {
             $idtypedisk = $rowid['id'];
          }
@@ -3753,6 +3756,7 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       $OSname = '';
       $OSversion = '';
       $OSarch = '';
+      $OSidversion = 0;
       $verflag = false;
       $archflag = false;
       for ($i = 0; $i < strlen($operating_system); $i++) {
