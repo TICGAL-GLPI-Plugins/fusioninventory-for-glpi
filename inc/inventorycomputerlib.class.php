@@ -3868,6 +3868,15 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
          }
       }
 
+      //Borrar SO antiguos
+      $DB->delete(
+         'glpi_items_operatingsystems',
+         [
+            'items_id' => $computers_id,
+            'itemtype' => 'Computer'
+         ]
+      );
+
       //Se guardan los datos del SO asociados ya a la máquina
       $DB->insert(
          'glpi_items_operatingsystems',
