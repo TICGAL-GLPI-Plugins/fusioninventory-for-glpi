@@ -3756,6 +3756,8 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
       $OSname = '';
       $OSversion = '';
       $OSarch = '';
+      $OSidname = 0;
+      $OSidarch = 0;
       $OSidversion = 0;
       $verflag = false;
       $archflag = false;
@@ -3868,28 +3870,33 @@ class PluginFusioninventoryInventoryComputerLib extends PluginFusioninventoryInv
          }
       }
 
-      //Borrar SO antiguos
-      $DB->delete(
-         'glpi_items_operatingsystems',
-         [
-            'items_id' => $computers_id,
-            'itemtype' => 'Computer'
-         ]
-      );
+      $OSidname = is_null($OSidname) ? 0 : $OSidname;
+      $OSidversion = is_null($OSidversion) ? 0 : $OSidversion;
+      $OSidarch = is_null($OSidarch) ? 0 : $OSidarch;
+      if ($OSidname > 0) {
+         //Borrar SO antiguos
+         $DB->delete(
+            'glpi_items_operatingsystems',
+            [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer'
+            ]
+         );
 
-      //Se guardan los datos del SO asociados ya a la máquina
-      $DB->insert(
-         'glpi_items_operatingsystems',
-         [
-            'items_id' => $computers_id,
-            'itemtype' => 'Computer',
-            'operatingsystems_id' => $OSidname,
-            'operatingsystemversions_id' => $OSidversion,
-            'operatingsystemarchitectures_id' => $OSidarch,
-            'date_mod' => date('Y-m-d H:i:s'),
-            'date_creation' => date('Y-m-d H:i:s')
-         ]
-      );
+         //Se guardan los datos del SO asociados ya a la máquina
+         $DB->insert(
+            'glpi_items_operatingsystems',
+            [
+               'items_id' => $computers_id,
+               'itemtype' => 'Computer',
+               'operatingsystems_id' => $OSidname,
+               'operatingsystemversions_id' => $OSidversion,
+               'operatingsystemarchitectures_id' => $OSidarch,
+               'date_mod' => date('Y-m-d H:i:s'),
+               'date_creation' => date('Y-m-d H:i:s')
+            ]
+         );
+      }
    }
    //END CHANGE
 }
