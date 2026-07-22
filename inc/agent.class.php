@@ -1041,7 +1041,7 @@ class PluginFusioninventoryAgent extends CommonDBTM {
                  && is_numeric($this->fields['agent_port'])) {
             $port = $this->fields['agent_port'];
          }
-         if ($computer->fields["name"] && $computer->fields["name"] != "localhost") {
+         if (isset($computer->fields["name"]) && $computer->fields["name"] != "localhost") {
             array_push($url_addresses, "http://".$computer->fields["name"].
                ":".$port);
 

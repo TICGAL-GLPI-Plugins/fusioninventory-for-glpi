@@ -212,7 +212,7 @@ class PluginFusioninventoryInventoryRuleRemotework extends Rule {
     * @param array $input
     * @return boolean
     */
-   function checkCriteria(&$criteria, &$input) {
+   function checkCriteria($criteria, &$input) {
 
       $res = parent::checkCriteria($criteria, $input);
 

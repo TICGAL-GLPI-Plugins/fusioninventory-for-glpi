@@ -1396,6 +1396,7 @@ class PluginFusioninventoryFormatconvert {
       if ($pfConfig->getValue('import_vm') == 1) {
          if (isset($array['VIRTUALMACHINES'])) {
             foreach ($array['VIRTUALMACHINES'] as $a_virtualmachines) {
+               //CHANGE
                $array_tmp = $thisc->addValues($a_virtualmachines,
                                               [
                                                  'NAME'        => 'name',
@@ -1405,7 +1406,15 @@ class PluginFusioninventoryFormatconvert {
                                                  'VMTYPE'      => 'virtualmachinetypes_id',
                                                  'SUBSYSTEM'   => 'virtualmachinesystems_id',
                                                  'STATUS'      => 'virtualmachinestates_id',
-                                                 'UUID'        => 'uuid']);
+                                                 'UUID'        => 'uuid',
+                                                 'ADMIN'       => 'admin',
+                                                 'OWNER'       => 'owner',
+                                                 'LOCALDISK'   => 'local_disk',
+                                                 'SHAREDDISK'  => 'shared_disk',
+                                                 'IP'          => 'ip_addresses',
+                                                 'HOST'        => 'host_name',
+                                                 'OS'          => 'operative_system']);
+               //END CHANGE
                $array_tmp['is_dynamic'] = 1;
                // Hack for BSD jails
                if ($array_tmp['virtualmachinetypes_id'] == 'jail') {
@@ -1431,6 +1440,12 @@ class PluginFusioninventoryFormatconvert {
                   $a_virtualmachines['MEMORY'] = str_replace('B', '', $a_virtualmachines['MEMORY']);
                   $a_virtualmachines['MEMORY'] = $a_virtualmachines['MEMORY'] / 1000000;
                }
+               //CHANGE
+               if ($a_virtualmachines['STATUS'] == 'running') {
+                  $a_virtualmachines['STATUS'] = 'Power on';
+               } else if ($a_virtualmachines['STATUS'] == 'off') {
+                  $a_virtualmachines['STATUS'] = 'Power off';
+               }
                $array_tmp = $thisc->addValues($a_virtualmachines,
                                               [
                                                  'NAME'            => 'name',
@@ -1440,7 +1455,16 @@ class PluginFusioninventoryFormatconvert {
                                                  'VMTYPE'          => 'computertypes_id',
                                                  'UUID'            => 'uuid',
                                                  'OPERATINGSYSTEM' => 'operatingsystems_id',
-                                                 'CUSTOMFIELDS'    => 'comment']);
+                                                 'CUSTOMFIELDS'    => 'comment',
+                                                 'ADMIN'           => 'admin',
+                                                 'OWNER'           => 'owner',
+                                                 'LOCALDISK'       => 'local_disk',
+                                                 'SHAREDDISK'      => 'shared_disk',
+                                                 'IP'              => 'ip_addresses',
+                                                 'HOST'            => 'host_name',
+                                                 'OS'              => 'operative_system',
+                                                 'STATUS'          => 'states_id']);
+               //END CHANGE
                $array_tmp['is_dynamic'] = 1;
                if (isset($array_tmp['comment'])
                        && is_array($array_tmp['comment'])) {
@@ -1450,6 +1474,25 @@ class PluginFusioninventoryFormatconvert {
                      $array_tmp['comment'] .= $data['NAME'].' : '.$data['VALUE'].'\n';
                   }
                }
+               //CHANGE
+               $array_tmp['ipaddresses'] = [];
+               if (isset($a_virtualmachines['IP'])) {
+                  $array_ip = [];
+                  $single_ip = '';
+                  for ($i = 0; $i < strlen($a_virtualmachines['IP']); $i++) {
+                     if ($a_virtualmachines['IP'][$i] != '/') {
+                        $single_ip = $single_ip . $a_virtualmachines['IP'][$i];
+                        if ($i == strlen($a_virtualmachines['IP']) - 1) {
+                           array_push($array_ip, $single_ip);
+                        }
+                     } else if ($a_virtualmachines['IP'][$i] == '/') {
+                        array_push($array_ip, $single_ip);
+                        $single_ip = '';
+                     }
+                  }
+                  $array_tmp['ipaddresses'] = $array_ip;
+               }
+               //END CHANGE
                $array_tmp['networkport'] = [];
                if (isset($a_virtualmachines['NETWORKS'])
                        && is_array($a_virtualmachines['NETWORKS'])) {
